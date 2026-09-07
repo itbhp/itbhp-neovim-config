@@ -26,7 +26,12 @@ require("lazy").setup({
     { import = "lazyvim.plugins.extras.lang.rust" },
     { import = "lazyvim.plugins.extras.lang.clangd" }, -- C / C++
     { import = "lazyvim.plugins.extras.lang.typescript" }, -- JS / TS
-    { import = "lazyvim.plugins.extras.lang.java" },
+    -- Java is NOT imported here: we use the nvim-java plugin instead (see
+    -- lua/plugins/java.lua). LazyVim's lang.java extra drives Java via
+    -- nvim-jdtls, which conflicts with nvim-java — the two cannot coexist.
+    -- DAP core gives <leader>d debug keymaps + dap-ui; nvim-java bundles
+    -- nvim-dap and wires the Java debug adapter into it automatically.
+    { import = "lazyvim.plugins.extras.dap.core" },
     -- import/override with your plugins
     { import = "plugins" },
   },

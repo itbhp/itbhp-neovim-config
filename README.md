@@ -16,14 +16,16 @@ before (`~/.vimrc` + `~/.vim/bundle`); this directory only affects `nvim`.
 3. [What this config contains](#what-this-config-contains)
 4. [Directory layout](#directory-layout)
 5. [Keymaps I brought over from Vim](#keymaps-i-brought-over-from-vim)
-6. [Languages / LSP set up](#languages--lsp-set-up)
-7. [How to add a new plugin](#how-to-add-a-new-plugin)
-8. [How to add a new language / LSP server](#how-to-add-a-new-language--lsp-server)
-9. [How to change options and keymaps](#how-to-change-options-and-keymaps)
-10. [Everyday commands & maintenance](#everyday-commands--maintenance)
-11. [Outstanding toolchain gaps](#outstanding-toolchain-gaps)
-12. [Rollback](#rollback)
-13. [Learning resources](#learning-resources)
+6. [Useful LazyVim shortcuts & workflows](#useful-lazyvim-shortcuts--workflows)
+7. [Git with lazygit](#git-with-lazygit)
+8. [Languages / LSP set up](#languages--lsp-set-up)
+9. [How to add a new plugin](#how-to-add-a-new-plugin)
+10. [How to add a new language / LSP server](#how-to-add-a-new-language--lsp-server)
+11. [How to change options and keymaps](#how-to-change-options-and-keymaps)
+12. [Everyday commands & maintenance](#everyday-commands--maintenance)
+13. [Outstanding toolchain gaps](#outstanding-toolchain-gaps)
+14. [Rollback](#rollback)
+15. [Learning resources](#learning-resources)
 
 ---
 
@@ -83,18 +85,51 @@ plugins wire this up:
 
 ## What this config contains
 
-Compared to a stock LazyVim starter, I added/changed:
+This is the complete list of everything that differs from a **bare LazyVim starter**
+(the `LazyVim/starter` template, whose `config/*.lua` and `plugins/example.lua` are all
+empty). A stock starter enables *no* languages and *no* extras; everything below is added.
 
-- **Ported my `.vimrc` settings** — `textwidth=100` (+ a `colorcolumn` marker) and
-  `showbreak=+++`. Most other old settings (relative numbers, cursorline, smartcase,
-  hlsearch…) are already LazyVim defaults, so they aren't repeated.
-- **Re-created my old Vim plugins** with LazyVim's modern equivalents:
-  vim-airline → **lualine**, ctrlp → **telescope/snacks picker**, nerdtree → **neo-tree**.
-  My old keybinds (`<C-n>`, `<C-f>`, `<C-p>`) are mapped onto them.
-- **tmuxline** — the one Vim plugin with no LazyVim equivalent, added as-is
-  (`lua/plugins/tmuxline.lua`).
-- **Language support** for Python, Lua, Web (JS/TS/HTML/CSS), Go, Rust, C/C++, Java, and
-  **Kotlin** (see below).
+### Options / globals changed (`lua/config/options.lua`)
+- `vim.g.lazyvim_python_lsp = "basedpyright"` — use basedpyright instead of LazyVim's
+  default pyright.
+- `textwidth = 100` + `colorcolumn = "100"` — ported from `.vimrc`, with a visual marker.
+- `showbreak = "+++"` — ported from `.vimrc`.
+- (Other old vim settings — relative numbers, cursorline, smartcase, hlsearch… — are
+  already LazyVim defaults, so they aren't repeated.)
+
+### Keymaps added (`lua/config/keymaps.lua`)
+Old Vim muscle memory, on top of all LazyVim defaults: `<C-n>` (neo-tree toggle),
+`<C-f>` (reveal file), `<C-p>` (find files). See the [table below](#keymaps-i-brought-over-from-vim).
+
+### LazyVim Extras enabled (`import` lines in `lua/config/lazy.lua`)
+Each extra pulls in its own language servers/formatters/debug adapters and plugins:
+
+| Extra | Adds |
+|-------|------|
+| `lang.python` | basedpyright + ruff, `nvim-dap-python`, `neotest-python`, venv-selector |
+| `lang.go` | gopls/gofumpt/goimports, `nvim-dap-go`, `neotest-go`, `gopher.nvim` |
+| `lang.rust` | `rustaceanvim`, `crates.nvim` (rust-analyzer) |
+| `lang.clangd` | clangd + `clangd_extensions.nvim` (C / C++) |
+| `lang.typescript` | vtsls + eslint + prettier (JS / TS) |
+| `dap.core` | `nvim-dap`, `nvim-dap-ui`, `nvim-nio`, `mason-nvim-dap` — the debugging UI + `<leader>d` keymaps |
+
+### Standalone plugins added (`lua/plugins/*.lua`)
+- **nvim-java** stack (`java.lua`) — `nvim-java/nvim-java` + its deps `spring-boot.nvim`,
+  `nui.nvim`, `nvim-dap`; plus the `github:nvim-java/mason-registry` and the `java`
+  treesitter parser. This **replaces** LazyVim's `lang.java` extra (see [Java](#languages--lsp-set-up) below).
+- **tmuxline** (`tmuxline.lua`) — `edkolev/tmuxline.vim`, the one old Vim plugin with no
+  LazyVim equivalent; makes the tmux statusline match the colorscheme.
+- **html + cssls** (`web.lua`) — the two servers the typescript extra doesn't cover, added
+  via an `nvim-lspconfig` `servers` override.
+- **kotlin_language_server** (`kotlin.lua`) — Kotlin has no official extra, enabled by hand.
+
+### Re-created old Vim plugins (already shipped by LazyVim — no install needed)
+vim-airline → **lualine**, ctrlp → **telescope/snacks picker**, nerdtree → **neo-tree**.
+Only the keybinds above were added to point at them.
+
+### Net language support
+Python, Lua, Web (JS/TS/HTML/CSS), Go, Rust, C/C++, **Java** (via nvim-java), **Kotlin**,
+plus step-debugging (DAP) for the languages whose extras provide an adapter.
 
 ---
 
@@ -110,6 +145,7 @@ Compared to a stock LazyVim starter, I added/changed:
 │   │   ├── keymaps.lua          # my custom keymaps (on top of LazyVim defaults)
 │   │   └── autocmds.lua         # custom autocommands (empty for now)
 │   └── plugins/                 # ← one file per plugin/override. Add files here.
+│       ├── java.lua             # nvim-java (replaces LazyVim's lang.java extra)
 │       ├── kotlin.lua           # manual Kotlin LSP (no official extra)
 │       ├── web.lua              # html + css language servers
 │       ├── tmuxline.lua         # the tmuxline plugin
@@ -118,9 +154,9 @@ Compared to a stock LazyVim starter, I added/changed:
 └── README.md                    # this file
 ```
 
-> `lazyvim.json` (which tracks Extras enabled via `:LazyExtras`) is **not** present here —
-> I enable Extras as explicit `import` lines in `lua/config/lazy.lua` instead, so they
-> live in version control. If you ever use `:LazyExtras`, that file will appear.
+> `lazyvim.json` (which tracks Extras enabled via `:LazyExtras`) exists but its `extras`
+> list is **empty** — I enable Extras as explicit `import` lines in `lua/config/lazy.lua`
+> instead, so they live in version control. Using `:LazyExtras` would populate that file.
 
 **The two places you'll actually edit:** `lua/config/*.lua` (settings & keymaps) and
 `lua/plugins/*.lua` (plugins). Everything under `~/.local/share/nvim/lazy` is
@@ -145,10 +181,145 @@ of every available binding.
 
 ---
 
+## Useful LazyVim shortcuts & workflows
+
+Leader is `<Space>`. These are LazyVim / Neovim defaults (I didn't add them) — the ones
+you'll reach for constantly. **Forgotten a binding?** Press `<Space>` and wait for the
+which-key popup, or run `:LazyVim` / `<leader>sk` (search keymaps).
+
+### Navigate the code (LSP)
+
+| Key | Action |
+|-----|--------|
+| `gd` | **Go to definition** (jump to where a symbol is defined) |
+| `gD` | Go to declaration |
+| `gr` | **See usages / references** (everywhere the symbol is used) |
+| `gI` | Go to implementation |
+| `gy` | Go to type definition |
+| `K` | **Hover docs** — show signature/docs for the symbol under the cursor |
+| `gK` | Signature help (parameter hints) |
+| `<leader>ca` | Code action (quick fixes, imports, refactors) |
+| `<leader>cr` | Rename symbol (project-wide) |
+| `<leader>ss` | Search symbols in this file · `<leader>sS` = workspace symbols |
+
+### Come back / move through jumps
+
+| Key | Action |
+|-----|--------|
+| `<C-o>` | **Jump back** to where you were before `gd`/search (backwards in the jumplist) |
+| `<C-i>` | Jump forward again (reverse of `<C-o>`) |
+| `<C-t>` | Pop back up the tag stack (also returns from a definition jump) |
+| `<C-6>` / `<leader>bb` | Toggle to the previously-edited buffer |
+| `` `` `` | Jump to the position before the last jump |
+
+> Mental model: `gd` to dive in, `<C-o>` to come back. They pair up.
+
+### Diagnostics (errors / warnings)
+
+| Key | Action |
+|-----|--------|
+| `]d` / `[d` | Next / previous diagnostic |
+| `]e` / `[e` | Next / previous **error** only |
+| `<leader>cd` | Show the diagnostics for the current line |
+| `<leader>xx` | Open the diagnostics list (Trouble) for the whole buffer/project |
+
+### Run a `main` / debug
+
+Debugging keymaps come from the `dap.core` extra; the `<leader>d` group is the debugger.
+
+| Key / command | Action |
+|---------------|--------|
+| `<leader>db` | Toggle breakpoint on the current line |
+| `<leader>dc` | **Start / continue** a debug session (pick/attach a launch config) |
+| `<leader>di` / `<leader>dO` / `<leader>do` | Step into / over / out |
+| `<leader>du` | Toggle the DAP UI (variables, call stack, breakpoints) |
+| `<leader>de` | Evaluate the expression under the cursor |
+| `<leader>dt` | Terminate the session |
+| `:JavaRunnerRunMain` | **Java only:** run the current file's `main` (no debugger). `:JavaRunnerStopMain` to stop, `:JavaRunnerToggleLogs` to see output |
+
+> For Java, `:JavaRunnerRunMain` just *runs* the program; use `<leader>dc` (or
+> `:JavaTestDebug…`) when you want breakpoints. nvim-java wires the Java debug adapter into
+> DAP automatically.
+
+### Run tests
+
+Two systems, depending on language:
+
+**Neotest** (Python & Go here — provided by their `lang.*` extras). The `<leader>t` group:
+
+| Key | Action |
+|-----|--------|
+| `<leader>tr` | **Run the nearest test** (the one under the cursor) |
+| `<leader>tt` | Run all tests in the current file |
+| `<leader>tT` | Run all test files |
+| `<leader>td` | Debug the nearest test |
+| `<leader>ts` | Toggle the test summary sidebar |
+| `<leader>to` / `<leader>tO` | Show output / toggle the output panel |
+| `<leader>tS` | Stop running tests · `<leader>tw` toggles watch mode |
+
+**Java** uses nvim-java's own commands (not neotest):
+
+| Command | Action |
+|---------|--------|
+| `:JavaTestRunCurrentMethod` | Run the test method under the cursor |
+| `:JavaTestRunCurrentClass` | Run all tests in the current class |
+| `:JavaTestRunAllTests` | Run every test |
+| `:JavaTestDebugCurrentMethod` / `:JavaTestDebugCurrentClass` | Same, under the debugger |
+| `:JavaTestViewLastReport` | Reopen the last test report |
+
+---
+
+## Git with lazygit
+
+LazyVim bundles [**lazygit**](https://github.com/jesseduffield/lazygit) — a full terminal
+UI for git — and opens it in a floating window (requires the `lazygit` binary on `PATH`;
+install with `brew install lazygit`). It's the fastest way to stage, commit, branch, and
+push without leaving the editor.
+
+### Opening it (from Neovim)
+
+| Key | Action |
+|-----|--------|
+| `<leader>gg` | **Open lazygit** at the git repo root |
+| `<leader>gG` | Open lazygit in the current working directory |
+| `<leader>gf` | Lazygit-style history for the **current file** |
+| `<leader>gl` | Git log (repo root) · `<leader>gL` = log for cwd |
+| `<leader>gb` | Git blame for the current line |
+| `<leader>gB` | Open the current line/file on the git host in a browser |
+
+The whole `<leader>g` group is git; `<leader>gh…` are the per-hunk staging actions
+(gitsigns): `<leader>ghs` stage hunk, `<leader>ghr` reset hunk, `<leader>ghp` preview,
+`<leader>ghb` blame line.
+
+### Inside the lazygit window
+
+lazygit has its own keybindings (press `?` any time for context help). The essentials:
+
+| Key | Action |
+|-----|--------|
+| `?` | Help — the full keymap for the current panel |
+| `←` / `→` or `Tab` | Switch panels (Status · Files · Branches · Commits · Stash) |
+| `↑` / `↓` or `j` / `k` | Move within a panel |
+| `<Space>` | Stage / unstage the selected file or hunk |
+| `a` | Stage / unstage **all** |
+| `c` | Commit (opens the message editor) · `A` amend last commit |
+| `P` | Push · `p` pull · `f` fetch |
+| `b` | Branch menu (create / checkout / merge) · `<Space>` on a branch checks it out |
+| `Enter` | Drill into the selected item (files in a commit, hunks in a file) |
+| `d` | Discard changes / delete (context-dependent) |
+| `x` | Open the menu of actions for the current panel |
+| `q` | Quit lazygit and return to Neovim |
+
+> lazygit is a standalone tool — these keys are its own, not Neovim's. Anything you can do
+> here you could also do from a plain `lazygit` in a terminal; LazyVim just launches it
+> pointed at the right repo.
+
+---
+
 ## Languages / LSP set up
 
-Enabled via LazyVim **Extras** in `lua/config/lazy.lua` (plus two manual files). All
-servers auto-installed through Mason:
+Enabled via LazyVim **Extras** in `lua/config/lazy.lua` (plus the manual files
+`java.lua`, `kotlin.lua`, `web.lua`). All servers auto-installed through Mason:
 
 | Language | Server(s) | Where configured |
 |----------|-----------|------------------|
@@ -159,8 +330,19 @@ servers auto-installed through Mason:
 | Go | gopls, gofumpt, goimports | `lazy.lua` |
 | Rust | rust-analyzer | `lazy.lua` — **run `rustup component add rust-analyzer`** |
 | C / C++ | clangd | `lazy.lua` (clangd) |
-| Java | jdtls | `lazy.lua` |
+| Java | jdtls + spring-boot | `java.lua` (**nvim-java** — not the LazyVim extra) |
 | Kotlin | kotlin_language_server | `kotlin.lua` (manual — no official extra) |
+
+**Note on Java (`java.lua`):** this uses the [`nvim-java`](https://github.com/nvim-java/nvim-java)
+plugin instead of LazyVim's built-in `lang.java` extra. The extra drives Java via `nvim-jdtls`,
+which **conflicts with nvim-java** — the two cannot coexist, so the extra import was removed.
+nvim-java is an all-in-one (jdtls + DAP + Spring Boot + Lombok + test runner). Two setup details
+matter and are handled in `java.lua`: (1) `require("java").setup()` must run **before**
+`lspconfig.jdtls.setup()`, so it's deferred to nvim-lspconfig's `setup.jdtls` hook (LazyVim runs
+that first); (2) nvim-java's own Mason registry (`github:nvim-java/mason-registry`) is listed
+**before** the default so its pinned `jdtls`/`java-debug-adapter`/`java-test` versions win. Opening
+a `.java` file attaches both the `jdtls` and `spring-boot` LSP clients. (nvim-java provides no
+`:checkhealth java`.)
 
 **Note on Kotlin (`kotlin.lua`):** it has no official LazyVim extra, so it's enabled by
 hand. It also needs a non-empty `init_options` — an empty Lua table serializes to a JSON
