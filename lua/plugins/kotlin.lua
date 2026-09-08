@@ -1,25 +1,41 @@
--- Kotlin has no official LazyVim extra, so we enable it by hand.
--- This doubles as a worked example of how a LazyVim plugin/LSP override looks:
--- you merge into an existing plugin's `opts` rather than redefining the plugin.
+-- Kotlin support via kotlin.nvim (https://github.com/AlexandrosAlexiou/kotlin.nvim).
 --
--- Adding a server under nvim-lspconfig's `servers` is all LazyVim needs — it
--- auto-installs the matching Mason package (kotlin-language-server) and enables
--- the server. If auto-install ever doesn't fire, run `:MasonInstall kotlin-language-server`.
+-- This replaces the previous hand-rolled kotlin_language_server LSP override.
+-- kotlin.nvim drives JetBrains' new `kotlin-lsp` (the IntelliJ-based server,
+-- installed through Mason as `kotlin-lsp`) and starts/manages the LSP client
+-- itself, so we do NOT register kotlin under nvim-lspconfig's `servers`.
+--
+-- Because kotlin.nvim owns LSP startup, mason-lspconfig must NOT auto-enable
+-- `kotlin_lsp` (that would spawn a second, conflicting client). We exclude it below.
+--
+-- First run: `:MasonInstall kotlin-lsp` (Mason may auto-install it as a dependency).
 return {
   {
-    "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        kotlin_language_server = {
-          -- kotlin-language-server crashes on init ("Expected BEGIN_OBJECT but was
-          -- BEGIN_ARRAY") when initializationOptions serializes to a JSON array,
-          -- which an empty Lua table does. Passing a real (non-empty) object keeps
-          -- it a JSON object through LazyVim's config merge and fixes the crash.
-          init_options = {
-            storagePath = vim.fn.stdpath("cache") .. "/kotlin-language-server",
-          },
-        },
-      },
+    "AlexandrosAlexiou/kotlin.nvim",
+    ft = { "kotlin" },
+    dependencies = {
+      "mason-org/mason.nvim",
+      "mason-org/mason-lspconfig.nvim",
+      "stevearc/oil.nvim",
+      "folke/trouble.nvim",
     },
+    opts = {}, -- see plugin README for the full defaults (inlay_hints, jvm_args, ...)
+    config = function(_, opts)
+      require("kotlin").setup(opts)
+    end,
+  },
+
+  -- Keep mason-lspconfig from auto-enabling kotlin_lsp; kotlin.nvim manages it.
+  {
+    "mason-org/mason-lspconfig.nvim",
+    opts = {
+      automatic_enable = { exclude = { "kotlin_lsp" } },
+    },
+  },
+
+  -- Treesitter parser for Kotlin (LazyVim's dropped kotlin extra used to add it).
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = { ensure_installed = { "kotlin" } },
   },
 }
