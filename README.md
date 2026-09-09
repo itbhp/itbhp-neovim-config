@@ -122,6 +122,10 @@ Each extra pulls in its own language servers/formatters/debug adapters and plugi
 - **html + cssls** (`web.lua`) — the two servers the typescript extra doesn't cover, added
   via an `nvim-lspconfig` `servers` override.
 - **kotlin_language_server** (`kotlin.lua`) — Kotlin has no official extra, enabled by hand.
+- **render-markdown.nvim** (`markdown.lua`) — renders markdown in-buffer (heading icons,
+  code-block backgrounds, aligned tables, bullets, checkboxes). Toggle with `<leader>um`.
+  LazyVim's `lang.markdown` extra was deliberately *not* used: it also pulls in marksman,
+  markdownlint, markdown-toc, prettier-on-save for `.md` and a browser preview.
 
 ### Re-created old Vim plugins (already shipped by LazyVim — no install needed)
 vim-airline → **lualine**, ctrlp → **telescope/snacks picker**, nerdtree → **neo-tree**.
@@ -146,11 +150,17 @@ plus step-debugging (DAP) for the languages whose extras provide an adapter.
 │   │   └── autocmds.lua         # custom autocommands (empty for now)
 │   └── plugins/                 # ← one file per plugin/override. Add files here.
 │       ├── java.lua             # nvim-java (replaces LazyVim's lang.java extra)
-│       ├── kotlin.lua           # manual Kotlin LSP (no official extra)
+│       ├── kotlin.lua           # kotlin.nvim (no official extra)
 │       ├── web.lua              # html + css language servers
+│       ├── markdown.lua         # render-markdown.nvim (in-buffer markdown rendering)
+│       ├── claude-code.lua      # claude-code.nvim (Claude Code terminal, <C-,>)
+│       ├── explorer.lua         # neo-tree + picker overrides (show git-ignored files)
 │       ├── tmuxline.lua         # the tmuxline plugin
 │       └── example.lua          # LazyVim's commented example file (reference)
 ├── lazy-lock.json               # pinned plugin versions (auto-generated)
+├── lazyvim.json                 # Extras tracked by :LazyExtras (empty — see note below)
+├── .neoconf.json                # neoconf/lua_ls project settings
+├── stylua.toml                  # Lua formatting (2 spaces, 120 cols)
 └── README.md                    # this file
 ```
 
