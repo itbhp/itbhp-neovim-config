@@ -9,6 +9,10 @@
 -- extra otherwise defaults to plain "pyright", whose binary we don't install.
 vim.g.lazyvim_python_lsp = "basedpyright"
 
+-- Use neo-tree as the file explorer instead of LazyVim's default snacks.explorer,
+-- so the ported <C-n> / <C-f> NERDTree keymaps in keymaps.lua actually resolve.
+vim.g.lazyvim_explorer = "neo-tree"
+
 vim.opt.textwidth = 100 -- was `set textwidth=100`
 vim.opt.colorcolumn = "100" -- visual marker at the textwidth column
 vim.opt.showbreak = "+++" -- was `set showbreak=+++`
