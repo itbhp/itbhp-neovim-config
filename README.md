@@ -1,11 +1,14 @@
 # My Neovim configuration
 
-This is a **[LazyVim](https://lazyvim.github.io/)**-based Neovim setup, written in Lua and
-kept completely **separate from my old Vim/Vundle config**. Vim still works exactly as
-before (`~/.vimrc` + `~/.vim/bundle`); this directory only affects `nvim`.
+This is a **[LazyVim](https://lazyvim.github.io/)**-based Neovim setup, written in Lua. This
+directory only affects `nvim`.
 
-> Migrated on 2026-09-05 from a 3-line `init.vim` shim that just sourced `~/.vimrc`.
-> The old shim is backed up at `~/.config/nvim.bak/init.vim`.
+> Migrated on 2026-09-05 from a 3-line `init.vim` shim that just sourced `~/.vimrc`. The old
+> Vim/Vundle config and the `~/.config/nvim.bak` backup have both since been removed — `vim` is
+> still installed at `/usr/bin/vim` (9.1) but now runs with no config at all.
+
+Verified versions at the time of writing: **Neovim v0.12.5**, **LazyVim v16.0.0**, 51 plugins
+pinned in `lazy-lock.json`.
 
 ---
 
@@ -31,17 +34,18 @@ before (`~/.vimrc` + `~/.vim/bundle`); this directory only affects `nvim`.
 
 ## How Neovim and Vim stay isolated
 
-Vim and Neovim read **completely different files by default** — the only reason they were
-ever coupled is that the old `init.vim` deliberately repointed Neovim back at Vim's files.
-Now that it's gone, they share nothing:
+Vim and Neovim read **completely different files by default** — the only reason they were ever
+coupled here is that the old `init.vim` deliberately repointed Neovim back at Vim's files. Now
+that it's gone, they share nothing:
 
 | | Vim | Neovim (this config) |
 |---|---|---|
-| Config entry | `~/.vimrc` | `~/.config/nvim/init.lua` |
-| Plugin dir | `~/.vim/bundle` (Vundle) | `~/.local/share/nvim/lazy` (lazy.nvim) |
+| Config entry | `~/.vimrc` *(no longer present)* | `~/.config/nvim/init.lua` |
+| Plugin dir | `~/.vim/bundle` (Vundle) *(no longer present)* | `~/.local/share/nvim/lazy` (lazy.nvim) |
 | Data / state / cache | `~/.vim` | `~/.local/share/nvim`, `~/.local/state/nvim`, `~/.cache/nvim` |
 
-So editing this config can never affect Vim, and vice-versa.
+So editing this config can never affect Vim, and vice-versa. On this machine the Vim side is
+empty anyway — `~/.vim` holds only a `.netrwhist` file.
 
 ---
 
@@ -59,8 +63,8 @@ internally.**
 
 ### lazy.nvim — the *plugin manager*
 The engine that downloads, updates, lazy-loads, and version-locks plugins. It's the
-modern replacement for Vundle (what my Vim uses) / packer / vim-plug. You describe plugins
-as Lua tables ("specs"); lazy.nvim installs them. Managed with the `:Lazy` command.
+modern replacement for Vundle / packer / vim-plug. You describe plugins as Lua tables
+("specs"); lazy.nvim installs them. Managed with the `:Lazy` command.
 
 ### LSP — the *protocol* for IDE features
 LSP (Language Server Protocol) is how the editor gets autocomplete, go-to-definition,
@@ -92,8 +96,10 @@ empty). A stock starter enables *no* languages and *no* extras; everything below
 ### Options / globals changed (`lua/config/options.lua`)
 - `vim.g.lazyvim_python_lsp = "basedpyright"` — use basedpyright instead of LazyVim's
   default pyright.
-- `textwidth = 100` + `colorcolumn = "100"` — ported from `.vimrc`, with a visual marker.
-- `showbreak = "+++"` — ported from `.vimrc`.
+- `vim.g.lazyvim_explorer = "neo-tree"` — replace LazyVim's default `snacks.explorer` with
+  neo-tree, so the ported `<C-n>` / `<C-f>` NERDTree keymaps below actually resolve.
+- `textwidth = 100` + `colorcolumn = "100"` — ported from the old `.vimrc`, with a visual marker.
+- `showbreak = "+++"` — ported from the old `.vimrc`.
 - (Other old vim settings — relative numbers, cursorline, smartcase, hlsearch… — are
   already LazyVim defaults, so they aren't repeated.)
 
@@ -101,39 +107,78 @@ empty). A stock starter enables *no* languages and *no* extras; everything below
 Old Vim muscle memory, on top of all LazyVim defaults: `<C-n>` (neo-tree toggle),
 `<C-f>` (reveal file), `<C-p>` (find files). See the [table below](#keymaps-i-brought-over-from-vim).
 
+### lazy.nvim behaviour changed (`lua/config/lazy.lua`)
+Non-default plugin-manager settings, worth knowing because they change how updates behave:
+
+- `defaults.lazy = false` — plugins in `lua/plugins/` load **eagerly** at startup (LazyVim's
+  own plugins are still lazy-loaded).
+- `version = false` — track the latest git commit rather than the latest tag.
+- `checker = { enabled = true, notify = false }` — lazy.nvim checks for plugin updates
+  periodically but stays quiet about it; `:Lazy` shows what's pending.
+- `install.colorscheme = { "tokyonight", "habamax" }` — colorscheme used while installing.
+- `performance.rtp.disabled_plugins` — Neovim's built-in `gzip`, `tarPlugin`, `tohtml`,
+  `tutor`, `zipPlugin` are switched off for startup time.
+
 ### LazyVim Extras enabled (`import` lines in `lua/config/lazy.lua`)
 Each extra pulls in its own language servers/formatters/debug adapters and plugins:
 
 | Extra | Adds |
 |-------|------|
-| `lang.python` | basedpyright + ruff, `nvim-dap-python`, `neotest-python`, venv-selector |
-| `lang.go` | gopls/gofumpt/goimports, `nvim-dap-go`, `neotest-go`, `gopher.nvim` |
-| `lang.rust` | `rustaceanvim`, `crates.nvim` (rust-analyzer) |
-| `lang.clangd` | clangd + `clangd_extensions.nvim` (C / C++) |
-| `lang.typescript` | vtsls + eslint + prettier (JS / TS) |
-| `dap.core` | `nvim-dap`, `nvim-dap-ui`, `nvim-nio`, `mason-nvim-dap` — the debugging UI + `<leader>d` keymaps |
+| `lang.python` | ruff, `nvim-dap-python`, `venv-selector.nvim`, `ninja`/`rst` parsers. Note: the extra's *default* server is plain pyright — basedpyright comes from the `vim.g` override above. Its `neotest-python` spec is `optional` and never loads (see [Run tests](#run-tests)) |
+| `lang.go` | gopls, `gofumpt` + `goimports`, `golangci-lint` (via nvim-lint), `delve` + `nvim-dap-go`. Its `neotest-golang` spec is `optional` and never loads |
+| `lang.rust` | `rustaceanvim`, `crates.nvim`, `codelldb`. It sets `rust_analyzer = { enabled = false }` in lspconfig on purpose — rustaceanvim owns the server itself |
+| `lang.clangd` | clangd + `clangd_extensions.nvim` (C / C++), `codelldb` and the C/C++ DAP launch configs, `<leader>ch` to switch source/header |
+| `lang.typescript` | **vtsls only** (+ `js-debug-adapter` and the pwa-node/chrome/msedge DAP adapters). It does *not* include eslint or prettier — those are separate `linting.eslint` / `formatting.prettier` extras, neither of which is imported here |
+| `dap.core` | `nvim-dap`, `nvim-dap-ui`, `nvim-nio`, `nvim-dap-virtual-text`, `mason-nvim-dap` — the debugging UI + `<leader>d` keymaps |
 
 ### Standalone plugins added (`lua/plugins/*.lua`)
-- **nvim-java** stack (`java.lua`) — `nvim-java/nvim-java` + its deps `spring-boot.nvim`,
-  `nui.nvim`, `nvim-dap`; plus the `github:nvim-java/mason-registry` and the `java`
-  treesitter parser. This **replaces** LazyVim's `lang.java` extra (see [Java](#languages--lsp-set-up) below).
-- **tmuxline** (`tmuxline.lua`) — `edkolev/tmuxline.vim`, the one old Vim plugin with no
-  LazyVim equivalent; makes the tmux statusline match the colorscheme.
-- **html + cssls** (`web.lua`) — the two servers the typescript extra doesn't cover, added
-  via an `nvim-lspconfig` `servers` override.
-- **kotlin_language_server** (`kotlin.lua`) — Kotlin has no official extra, enabled by hand.
+- **nvim-java** (`java.lua`) — `nvim-java/nvim-java`, plus the
+  `github:nvim-java/mason-registry` and the `java` treesitter parser. This file declares only
+  `nvim-lspconfig` as a dependency; `spring-boot.nvim`, `nui.nvim` and `nvim-dap` come
+  transitively from nvim-java's own spec. This **replaces** LazyVim's `lang.java` extra (see
+  [Java](#languages--lsp-set-up) below).
+- **kotlin.nvim** (`kotlin.lua`) — `AlexandrosAlexiou/kotlin.nvim`, loaded on `ft = kotlin`,
+  with deps `mason.nvim`, `mason-lspconfig.nvim`, `oil.nvim`, `trouble.nvim`. It drives
+  JetBrains' `kotlin-lsp` (the IntelliJ-based server) and starts the client itself. Also adds
+  the `kotlin` treesitter parser and an `automatic_enable = { exclude = { "kotlin_lsp" } }`
+  override on mason-lspconfig. See the [Kotlin note](#languages--lsp-set-up) — **the server
+  binary is not installed yet**.
+- **claude-code.nvim** (`claude-code.lua`) — `greggh/claude-code.nvim` + `plenary.nvim`;
+  toggles a Claude Code terminal inside Neovim. `<C-,>` toggles it in **both** normal and
+  terminal mode; the plugin also maps `<leader>cC` (continue) and `<leader>cV` (verbose), and
+  defines `:ClaudeCode`, `:ClaudeCodeContinue`, `:ClaudeCodeResume`, `:ClaudeCodeVerbose`,
+  `:ClaudeCodeVersion`. Two gotchas: `<leader>cC` collides with LazyVim's *Refresh & Display
+  Codelens* (which is buffer-local on LSP attach, so it wins in any LSP buffer), and inside the
+  Claude terminal buffer the plugin remaps `<C-h/j/k/l>` (window navigation) and `<C-f>`/`<C-b>`
+  (page up/down) — so `<C-f>` does *not* reveal files there.
+- **explorer / picker overrides** (`explorer.lua`) — neo-tree's `filtered_items` and the snacks
+  `files` picker are both set to show dotfiles **and** git-ignored files. Why: `~/.gitconfig`
+  sets `core.excludesfile = ~/.gitignore_global`, so that machine-wide list (`CLAUDE.md`,
+  `.claude/`, `AGENTS.md`, `target/`, `.idea/`, …) is ignored in *every* repo, which made those
+  files invisible in any git checkout. Note that lazy.nvim **replaces** list-valued opts rather
+  than merging them, which is why `hide_by_name` respells neo-tree's two defaults
+  (`.DS_Store`, `thumbs.db`) alongside `.git`.
 - **render-markdown.nvim** (`markdown.lua`) — renders markdown in-buffer (heading icons,
   code-block backgrounds, aligned tables, bullets, checkboxes). Toggle with `<leader>um`.
   LazyVim's `lang.markdown` extra was deliberately *not* used: it also pulls in marksman,
   markdownlint, markdown-toc, prettier-on-save for `.md` and a browser preview.
+- **tmuxline** (`tmuxline.lua`) — `edkolev/tmuxline.vim`, the one old Vim plugin with no
+  LazyVim equivalent; makes the tmux statusline match the colorscheme.
+- **html + cssls** (`web.lua`) — the two servers the typescript extra doesn't cover, added
+  via an `nvim-lspconfig` `servers` override.
+
+> `lua/plugins/example.lua` is **inert** — its third line is `if true then return {} end`, so
+> none of the sample specs below it are in effect. It's kept as a reference only.
 
 ### Re-created old Vim plugins (already shipped by LazyVim — no install needed)
-vim-airline → **lualine**, ctrlp → **telescope/snacks picker**, nerdtree → **neo-tree**.
+vim-airline → **lualine**, ctrlp → **snacks picker**, nerdtree → **neo-tree**.
 Only the keybinds above were added to point at them.
 
 ### Net language support
-Python, Lua, Web (JS/TS/HTML/CSS), Go, Rust, C/C++, **Java** (via nvim-java), **Kotlin**,
-plus step-debugging (DAP) for the languages whose extras provide an adapter.
+Python, Lua, Web (JS/TS/HTML/CSS), Go, C/C++ and **Java** are wired up and have their servers
+installed. **Rust** and **Kotlin** are configured but their servers are missing — see
+[Outstanding toolchain gaps](#outstanding-toolchain-gaps). Step-debugging (DAP) is available for
+the languages whose extras provide an adapter; there is currently **no test runner** installed.
 
 ---
 
@@ -150,14 +195,14 @@ plus step-debugging (DAP) for the languages whose extras provide an adapter.
 │   │   └── autocmds.lua         # custom autocommands (empty for now)
 │   └── plugins/                 # ← one file per plugin/override. Add files here.
 │       ├── java.lua             # nvim-java (replaces LazyVim's lang.java extra)
-│       ├── kotlin.lua           # kotlin.nvim (no official extra)
+│       ├── kotlin.lua           # kotlin.nvim, driving JetBrains' kotlin-lsp
 │       ├── web.lua              # html + css language servers
 │       ├── markdown.lua         # render-markdown.nvim (in-buffer markdown rendering)
 │       ├── claude-code.lua      # claude-code.nvim (Claude Code terminal, <C-,>)
 │       ├── explorer.lua         # neo-tree + picker overrides (show git-ignored files)
 │       ├── tmuxline.lua         # the tmuxline plugin
-│       └── example.lua          # LazyVim's commented example file (reference)
-├── lazy-lock.json               # pinned plugin versions (auto-generated)
+│       └── example.lua          # LazyVim's example file — DISABLED, reference only
+├── lazy-lock.json               # pinned plugin versions (auto-generated, 51 plugins)
 ├── lazyvim.json                 # Extras tracked by :LazyExtras (empty — see note below)
 ├── .neoconf.json                # neoconf/lua_ls project settings
 ├── stylua.toml                  # Lua formatting (2 spaces, 120 cols)
@@ -185,8 +230,15 @@ adds my old muscle-memory bindings:
 | `<C-f>` | Reveal current file in explorer | `:NERDTreeFind` |
 | `<C-p>` | Find files (fuzzy) | CtrlP |
 
+Two more keymaps come from this config's **plugin** files rather than `keymaps.lua`:
+
+| Key | Action | Defined in |
+|-----|--------|------------|
+| `<C-,>` | Toggle the Claude Code terminal (normal **and** terminal mode) | `claude-code.lua` (the plugin's own default — the file sets no `keys`) |
+| `<leader>um` | Toggle in-buffer markdown rendering | `markdown.lua` (via `Snacks.toggle`) |
+
 LazyVim's own equivalents still work too: `<leader>e` (explorer), `<leader>ff` (find
-files), `<leader>/` (live grep). Press `<Space>` and wait — **which-key** pops up a menu
+files), `<leader>/` (grep in root dir). Press `<Space>` and wait — **which-key** pops up a menu
 of every available binding.
 
 ---
@@ -195,7 +247,7 @@ of every available binding.
 
 Leader is `<Space>`. These are LazyVim / Neovim defaults (I didn't add them) — the ones
 you'll reach for constantly. **Forgotten a binding?** Press `<Space>` and wait for the
-which-key popup, or run `:LazyVim` / `<leader>sk` (search keymaps).
+which-key popup, or run `<leader>sk` (search keymaps).
 
 ### Navigate the code (LSP)
 
@@ -207,20 +259,32 @@ which-key popup, or run `:LazyVim` / `<leader>sk` (search keymaps).
 | `gI` | Go to implementation |
 | `gy` | Go to type definition |
 | `K` | **Hover docs** — show signature/docs for the symbol under the cursor |
-| `gK` | Signature help (parameter hints) |
-| `<leader>ca` | Code action (quick fixes, imports, refactors) |
+| `gK` | Signature help (parameter hints) — `<C-k>` in insert mode |
+| `<leader>ca` | Code action (quick fixes, imports, refactors) — normal **and** visual mode |
 | `<leader>cr` | Rename symbol (project-wide) |
 | `<leader>ss` | Search symbols in this file · `<leader>sS` = workspace symbols |
+| `<leader>cl` | Show LSP info for the current buffer |
+
+> In LazyVim v16 the results for `gd`, `gr`, `<leader>ss` and `<leader>sS` open in the **snacks
+> picker** rather than a quickfix list.
 
 ### Come back / move through jumps
+
+These are **plain Neovim builtins** — they work in vanilla vim too, with or without LazyVim:
 
 | Key | Action |
 |-----|--------|
 | `<C-o>` | **Jump back** to where you were before `gd`/search (backwards in the jumplist) |
 | `<C-i>` | Jump forward again (reverse of `<C-o>`) |
 | `<C-t>` | Pop back up the tag stack (also returns from a definition jump) |
-| `<C-6>` / `<leader>bb` | Toggle to the previously-edited buffer |
+| `<C-6>` | Toggle to the previously-edited buffer (`<C-^>`) |
 | `` `` `` | Jump to the position before the last jump |
+
+And one from LazyVim:
+
+| Key | Action |
+|-----|--------|
+| `<leader>bb` | Switch to the other (previous) buffer — `<leader>`` ` is an alias |
 
 > Mental model: `gd` to dive in, `<C-o>` to come back. They pair up.
 
@@ -230,8 +294,10 @@ which-key popup, or run `:LazyVim` / `<leader>sk` (search keymaps).
 |-----|--------|
 | `]d` / `[d` | Next / previous diagnostic |
 | `]e` / `[e` | Next / previous **error** only |
+| `]w` / `[w` | Next / previous **warning** only |
 | `<leader>cd` | Show the diagnostics for the current line |
-| `<leader>xx` | Open the diagnostics list (Trouble) for the whole buffer/project |
+| `<leader>xx` | Diagnostics list (Trouble) for the whole **workspace** |
+| `<leader>xX` | Diagnostics list (Trouble) for the current **buffer** only |
 
 ### Run a `main` / debug
 
@@ -243,48 +309,58 @@ Debugging keymaps come from the `dap.core` extra; the `<leader>d` group is the d
 | `<leader>dc` | **Start / continue** a debug session (pick/attach a launch config) |
 | `<leader>di` / `<leader>dO` / `<leader>do` | Step into / over / out |
 | `<leader>du` | Toggle the DAP UI (variables, call stack, breakpoints) |
-| `<leader>de` | Evaluate the expression under the cursor |
+| `<leader>de` | Evaluate the expression under the cursor (normal **and** visual mode) |
 | `<leader>dt` | Terminate the session |
 | `:JavaRunnerRunMain` | **Java only:** run the current file's `main` (no debugger). `:JavaRunnerStopMain` to stop, `:JavaRunnerToggleLogs` to see output |
 
-> For Java, `:JavaRunnerRunMain` just *runs* the program; use `<leader>dc` (or
-> `:JavaTestDebug…`) when you want breakpoints. nvim-java wires the Java debug adapter into
-> DAP automatically.
+> ⚠️ Java debugging does not work yet — `java-debug-adapter` isn't installed. See
+> [Outstanding toolchain gaps](#outstanding-toolchain-gaps). Once it is, `<leader>dc` works on
+> Java too and nvim-java wires the adapter into DAP automatically; `:JavaRunnerRunMain` only
+> *runs* the program, with no breakpoints.
 
 ### Run tests
 
-Two systems, depending on language:
+**There is no test runner installed in this config.** LazyVim drives tests through
+[neotest](https://github.com/nvim-neotest/neotest), which comes from the `test.core` extra —
+that extra is **not imported**. The `lang.python` and `lang.go` extras each declare a neotest
+adapter, but marked `optional = true`, meaning they only *configure* neotest if something else
+installs it. Nothing does, so neotest is absent from `lazy-lock.json` and **none of the
+`<leader>t*` test keymaps exist**.
 
-**Neotest** (Python & Go here — provided by their `lang.*` extras). The `<leader>t` group:
+To enable it, add one line to `lua/config/lazy.lua`:
 
-| Key | Action |
-|-----|--------|
-| `<leader>tr` | **Run the nearest test** (the one under the cursor) |
-| `<leader>tt` | Run all tests in the current file |
-| `<leader>tT` | Run all test files |
-| `<leader>td` | Debug the nearest test |
-| `<leader>ts` | Toggle the test summary sidebar |
-| `<leader>to` / `<leader>tO` | Show output / toggle the output panel |
-| `<leader>tS` | Stop running tests · `<leader>tw` toggles watch mode |
+```lua
+{ import = "lazyvim.plugins.extras.test.core" },
+```
 
-**Java** uses nvim-java's own commands (not neotest):
+That would install neotest plus the Python and Go adapters, and create the `<leader>t` group
+(`tr` run nearest, `tt` run file, `tT` run all files, `td` debug nearest, `ts` toggle summary,
+`to`/`tO` output, `tS` stop, `tw` watch).
+
+**Java** uses nvim-java's own commands instead of neotest — these are real and registered by the
+plugin, but ⚠️ they need the `java-test` Mason package, which **isn't installed yet**:
 
 | Command | Action |
 |---------|--------|
 | `:JavaTestRunCurrentMethod` | Run the test method under the cursor |
 | `:JavaTestRunCurrentClass` | Run all tests in the current class |
 | `:JavaTestRunAllTests` | Run every test |
-| `:JavaTestDebugCurrentMethod` / `:JavaTestDebugCurrentClass` | Same, under the debugger |
+| `:JavaTestDebugCurrentMethod` / `:JavaTestDebugCurrentClass` / `:JavaTestDebugAllTests` | Same, under the debugger |
 | `:JavaTestViewLastReport` | Reopen the last test report |
+
+nvim-java also registers `:JavaProfile`, `:JavaDapConfig`, `:JavaSettingsChangeRuntime`,
+`:JavaRunnerSwitchLogs`, and — once jdtls attaches — `:JavaRefactorExtract*` and
+`:JavaBuildBuildWorkspace` / `:JavaBuildCleanWorkspace`.
 
 ---
 
 ## Git with lazygit
 
 LazyVim bundles [**lazygit**](https://github.com/jesseduffield/lazygit) — a full terminal
-UI for git — and opens it in a floating window (requires the `lazygit` binary on `PATH`;
-install with `brew install lazygit`). It's the fastest way to stage, commit, branch, and
-push without leaving the editor.
+UI for git — and opens it in a floating window. The keymap is guarded on
+`vim.fn.executable("lazygit")`, so it only appears if the binary is on `PATH` (installed here
+via Homebrew: `/opt/homebrew/bin/lazygit`, 0.63.1). It's the fastest way to stage, commit,
+branch, and push without leaving the editor.
 
 ### Opening it (from Neovim)
 
@@ -292,14 +368,15 @@ push without leaving the editor.
 |-----|--------|
 | `<leader>gg` | **Open lazygit** at the git repo root |
 | `<leader>gG` | Open lazygit in the current working directory |
-| `<leader>gf` | Lazygit-style history for the **current file** |
+| `<leader>gf` | History for the **current file** (a snacks picker, not lazygit) |
 | `<leader>gl` | Git log (repo root) · `<leader>gL` = log for cwd |
 | `<leader>gb` | Git blame for the current line |
-| `<leader>gB` | Open the current line/file on the git host in a browser |
+| `<leader>gB` | Open the current line/file on the git host in a browser (normal **and** visual) |
+| `<leader>gY` | Same, but copy the URL instead of opening it |
 
 The whole `<leader>g` group is git; `<leader>gh…` are the per-hunk staging actions
-(gitsigns): `<leader>ghs` stage hunk, `<leader>ghr` reset hunk, `<leader>ghp` preview,
-`<leader>ghb` blame line.
+(gitsigns, buffer-local): `<leader>ghs` stage hunk and `<leader>ghr` reset hunk (both work in
+visual mode too), `<leader>ghp` preview the hunk **inline**, `<leader>ghb` blame line.
 
 ### Inside the lazygit window
 
@@ -329,19 +406,26 @@ lazygit has its own keybindings (press `?` any time for context help). The essen
 ## Languages / LSP set up
 
 Enabled via LazyVim **Extras** in `lua/config/lazy.lua` (plus the manual files
-`java.lua`, `kotlin.lua`, `web.lua`). All servers auto-installed through Mason:
+`java.lua`, `kotlin.lua`, `web.lua`). Servers are auto-installed through Mason unless noted:
 
-| Language | Server(s) | Where configured |
-|----------|-----------|------------------|
-| Python | basedpyright + ruff | `lazy.lua` + `vim.g.lazyvim_python_lsp` in `options.lua` |
-| Lua | lua_ls | LazyVim core |
-| JS / TS | vtsls + eslint + prettier | `lazy.lua` (typescript) |
-| HTML / CSS | html, cssls | `web.lua` |
-| Go | gopls, gofumpt, goimports | `lazy.lua` |
-| Rust | rust-analyzer | `lazy.lua` — **run `rustup component add rust-analyzer`** |
-| C / C++ | clangd | `lazy.lua` (clangd) |
-| Java | jdtls + spring-boot | `java.lua` (**nvim-java** — not the LazyVim extra) |
-| Kotlin | kotlin_language_server | `kotlin.lua` (manual — no official extra) |
+| Language | Server(s) | Where configured | Installed? |
+|----------|-----------|------------------|-----------|
+| Python | basedpyright + ruff | `lazy.lua` + `vim.g.lazyvim_python_lsp` in `options.lua` | ✅ |
+| Lua | lua_ls | LazyVim core | ✅ |
+| JS / TS | vtsls | `lazy.lua` (typescript) | ✅ (no eslint/prettier — see below) |
+| HTML / CSS | html, cssls | `web.lua` | ✅ |
+| Go | gopls, gofumpt, goimports, golangci-lint | `lazy.lua` | ✅ |
+| Rust | rust-analyzer (driven by rustaceanvim, not Mason) | `lazy.lua` | ⚠️ **missing** — see [gaps](#outstanding-toolchain-gaps) |
+| C / C++ | clangd | `lazy.lua` (clangd) | ✅ |
+| Java | jdtls (+ spring-boot) | `java.lua` (**nvim-java** — not the LazyVim extra) | ⚠️ jdtls only; spring-boot / debug / test tooling **missing** |
+| Kotlin | kotlin-lsp (JetBrains) | `kotlin.lua` (**kotlin.nvim** — not an lspconfig server) | ⚠️ **missing** — see [gaps](#outstanding-toolchain-gaps) |
+
+**eslint / prettier are not set up.** The `lang.typescript` extra provides vtsls only; eslint
+and prettier live in separate `linting.eslint` and `formatting.prettier` extras, neither of
+which is imported, and neither binary is installed.
+
+Mason also has these installed, used by the extras above but not shown in the table:
+`codelldb`, `debugpy`, `delve`, `js-debug-adapter`, `shfmt`, `stylua`.
 
 **Note on Java (`java.lua`):** this uses the [`nvim-java`](https://github.com/nvim-java/nvim-java)
 plugin instead of LazyVim's built-in `lang.java` extra. The extra drives Java via `nvim-jdtls`,
@@ -350,15 +434,22 @@ nvim-java is an all-in-one (jdtls + DAP + Spring Boot + Lombok + test runner). T
 matter and are handled in `java.lua`: (1) `require("java").setup()` must run **before**
 `lspconfig.jdtls.setup()`, so it's deferred to nvim-lspconfig's `setup.jdtls` hook (LazyVim runs
 that first); (2) nvim-java's own Mason registry (`github:nvim-java/mason-registry`) is listed
-**before** the default so its pinned `jdtls`/`java-debug-adapter`/`java-test` versions win. Opening
-a `.java` file attaches both the `jdtls` and `spring-boot` LSP clients. (nvim-java provides no
-`:checkhealth java`.)
+**before** the default so its pinned `jdtls`/`java-debug-adapter`/`java-test` versions win —
+though that only matters once those last two are actually installed, which they aren't yet. So
+today a `.java` file attaches `jdtls` alone; the `spring-boot` client can't start without its
+server binary. (nvim-java provides no `:checkhealth java`.)
 
-**Note on Kotlin (`kotlin.lua`):** it has no official LazyVim extra, so it's enabled by
-hand. It also needs a non-empty `init_options` — an empty Lua table serializes to a JSON
-array (`[]`) and crashes the server on startup (`Expected BEGIN_OBJECT but was
-BEGIN_ARRAY`), so we pass a real `storagePath`. That file is a good worked example of a
-manual LSP override.
+**Note on Kotlin (`kotlin.lua`):** LazyVim v16 *does* ship a `lang.kotlin` extra, but this
+config uses [`kotlin.nvim`](https://github.com/AlexandrosAlexiou/kotlin.nvim) instead, which
+drives JetBrains' newer IntelliJ-based `kotlin-lsp`. Two consequences:
+
+1. kotlin.nvim **starts and manages the LSP client itself**, so Kotlin is deliberately *not*
+   registered under nvim-lspconfig's `servers` — unlike `web.lua`.
+2. Because of that, mason-lspconfig must **not** auto-enable `kotlin_lsp`, or a second,
+   conflicting client spawns. Hence `automatic_enable = { exclude = { "kotlin_lsp" } }`.
+
+First run needs `:MasonInstall kotlin-lsp` — see [gaps](#outstanding-toolchain-gaps).
+For a worked example of a plain **manual LSP override**, read `lua/plugins/web.lua` instead.
 
 ---
 
@@ -393,6 +484,10 @@ return {
   { "nvim-treesitter/nvim-treesitter", opts = { ensure_installed = { "toml", "dockerfile" } } },
 }
 ```
+
+> Careful: deep-merge applies to *tables*, but **list-valued** opts are **replaced**, not
+> appended. `lua/plugins/explorer.lua` shows the consequence — it has to respell neo-tree's
+> default `hide_by_name` entries because setting that key wipes them.
 
 After editing, run `:Lazy` and press `I` (install) / `U` (update / sync), or just restart
 Neovim — lazy.nvim installs anything new on startup.
@@ -448,12 +543,19 @@ LazyVim's own defaults for each of these are linked at the top of the respective
 | Command | What it does |
 |---------|--------------|
 | `:Lazy` | Plugin manager UI — install (`I`), update (`U`), clean, profile startup |
+| `:Lazy clean` | Delete plugins on disk that no longer appear in any spec |
 | `:Mason` | Browse/install/update language servers, formatters, linters |
+| `:MasonInstall kotlin-lsp` | One-time install of the Kotlin language server (see gaps) |
 | `:LazyExtras` | Toggle LazyVim language/feature packs |
 | `:LazyHealth` / `:checkhealth` | Diagnose config/plugin/tool problems |
-| `:LspInfo` | Show which language servers are attached to the current buffer |
+| `:LazyRoot` | Show the root directory LazyVim resolved for this buffer |
+| `:LspInfo` | Now just an alias for `:checkhealth vim.lsp`; `<leader>cl` is the native equivalent |
 | `:LspLog` | Tail the LSP log (for debugging a server that won't start) |
 | `:Neotree` | Open the file explorer |
+| `:ClaudeCode` | Open/toggle the Claude Code terminal (same as `<C-,>`) |
+
+> The full set of LazyVim commands is `:LazyExtras`, `:LazyHealth`, `:LazyRoot`, `:LazyFormat`
+> and `:LazyFormatInfo` — there is no `:LazyVim` command.
 
 Plugin versions are pinned in `lazy-lock.json` (already present in this dir). Commit it if
 you version-control this config so installs are reproducible; run `:Lazy update` to bump.
@@ -462,30 +564,49 @@ you version-control this config so installs are reproducible; run `:Lazy update`
 
 ## Outstanding toolchain gaps
 
-One language still needs a one-time host step before its server works:
+Four things are configured but not yet working:
 
-- **Rust** — `cargo` is present, but the analyzer isn't:
+- **Kotlin — no server installed.** `kotlin.lua` expects `kotlin-lsp`, but Mason only has the
+  older `kotlin-language-server`, a leftover from the previous hand-rolled setup. Fix:
+  ```
+  :MasonInstall kotlin-lsp
+  :MasonUninstall kotlin-language-server   # stale, no longer referenced
+  ```
+- **Java — no debugger, tests, or Spring Boot.** Mason has `jdtls` but not
+  `java-debug-adapter`, `java-test`, or the spring-boot language server, so `<leader>d*` and
+  the `:JavaTest*` commands will fail on Java files and only the `jdtls` client attaches.
+  Install those three via `:Mason`.
+- **Rust — the analyzer isn't installed.** `cargo` and `rustup` are present, and
+  `~/.cargo/bin/rust-analyzer` exists, but it's only a rustup **proxy symlink** — running it
+  errors with `Unknown binary 'rust-analyzer'`. Fix:
   ```
   rustup component add rust-analyzer
   ```
+- **No test runner.** neotest isn't installed; see [Run tests](#run-tests) for the one-line fix.
 
-Everything else (Python, Lua, Web, **Go**, C/C++, Java, Kotlin) is installed and verified
-working. Go 1.27 was installed via Homebrew, after which Mason built
-`gopls`/`gofumpt`/`goimports`. `fd` and `ripgrep` (used by the pickers and venv detection)
-are also installed via Homebrew.
+Verified working: Python, Lua, Web (HTML/CSS/TS), **Go**, C/C++, and Java's `jdtls`. Go 1.26.5
+was installed via Homebrew, after which Mason built `gopls`/`gofumpt`/`goimports`.
+**ripgrep** (15.2.0, used by the pickers) is installed via Homebrew; **`fd` is not** — install
+it with `brew install fd` if the pickers or venv detection want it.
+
+One oddity worth knowing: `~/.local/share/nvim/lazy/goto-line.nvim` exists on disk but appears
+in no plugin spec and no `lazy-lock.json` entry — an orphan from an earlier experiment.
+`:Lazy clean` would remove it.
 
 ---
 
 ## Rollback
 
-To go back to the old Vim-shim behavior:
+This directory is version-controlled, so git *is* the rollback mechanism:
 
 ```sh
-rm -rf ~/.config/nvim
-mv ~/.config/nvim.bak ~/.config/nvim
+cd ~/.config/nvim
+git log --oneline        # find the commit you want
+git revert <commit>      # undo one change
 ```
 
-(Vim itself was never touched, so nothing to restore there.)
+There's nothing else to restore — the old `~/.config/nvim.bak` shim and the Vim/Vundle config
+it pointed at have both been deleted. `vim` still runs, with no config.
 
 ---
 
