@@ -7,7 +7,7 @@ directory only affects `nvim`.
 > Vim/Vundle config and the `~/.config/nvim.bak` backup have both since been removed — `vim` is
 > still installed at `/usr/bin/vim` (9.1) but now runs with no config at all.
 
-Verified versions at the time of writing: **Neovim v0.12.5**, **LazyVim v16.0.0**, 51 plugins
+Verified versions at the time of writing: **Neovim v0.12.5**, **LazyVim v16.0.0**, 55 plugins
 pinned in `lazy-lock.json`.
 
 ---
@@ -20,7 +20,7 @@ pinned in `lazy-lock.json`.
 4. [Directory layout](#directory-layout)
 5. [Keymaps I brought over from Vim](#keymaps-i-brought-over-from-vim)
 6. [Useful LazyVim shortcuts & workflows](#useful-lazyvim-shortcuts--workflows)
-7. [Git with lazygit](#git-with-lazygit)
+7. [Git stack](#git-stack)
 8. [Languages / LSP set up](#languages--lsp-set-up)
 9. [How to add a new plugin](#how-to-add-a-new-plugin)
 10. [How to add a new language / LSP server](#how-to-add-a-new-language--lsp-server)
@@ -166,6 +166,15 @@ Each extra pulls in its own language servers/formatters/debug adapters and plugi
   LazyVim equivalent; makes the tmux statusline match the colorscheme.
 - **html + cssls** (`web.lua`) — the two servers the typescript extra doesn't cover, added
   via an `nvim-lspconfig` `servers` override.
+- **git stack** (`git.lua`) — four plugins that layer on top of the stock `gitsigns`:
+  **lazygit.nvim** (`kdheepak/lazygit.nvim`) floating lazygit UI with repo / file-history /
+  commit-log entry points; **diffview.nvim** (`sindrets/diffview.nvim`) branch and PR review
+  with a 3-pane merge view for conflicts; **git-conflict.nvim** (`akinsho/git-conflict.nvim`)
+  in-buffer "take ours / theirs / both" with buffer-local keymaps that activate only while a
+  conflict is present; **octo.nvim** (`pwntester/octo.nvim`) GitHub PRs and issues driven by
+  the `gh` CLI, wired to the snacks picker. The gitsigns spec is also extended here to turn on
+  inline blame (300 ms delay, EOL virtual text) and bind hunk-level actions. See the
+  [Git stack](#git-stack) section for keys.
 
 > `lua/plugins/example.lua` is **inert** — its third line is `if true then return {} end`, so
 > none of the sample specs below it are in effect. It's kept as a reference only.
@@ -354,29 +363,75 @@ nvim-java also registers `:JavaProfile`, `:JavaDapConfig`, `:JavaSettingsChangeR
 
 ---
 
-## Git with lazygit
+## Git stack
 
-LazyVim bundles [**lazygit**](https://github.com/jesseduffield/lazygit) — a full terminal
-UI for git — and opens it in a floating window. The keymap is guarded on
-`vim.fn.executable("lazygit")`, so it only appears if the binary is on `PATH` (installed here
-via Homebrew: `/opt/homebrew/bin/lazygit`, 0.63.1). It's the fastest way to stage, commit,
-branch, and push without leaving the editor.
+The git workflow is layered: **lazygit.nvim** for anything involved (staging, rebasing,
+pushing), **gitsigns.nvim** for in-buffer hunk ops and inline blame, **diffview.nvim** for
+reviewing a whole branch or PR, **git-conflict.nvim** for in-buffer conflict resolution, and
+**octo.nvim** for GitHub PRs and issues without leaving the editor. All five are configured in
+`lua/plugins/git.lua`; the conflict helpers live in `lua/config/conflicts.lua`.
 
-### Opening it (from Neovim)
+Prereqs: `lazygit` on `PATH` (`/opt/homebrew/bin/lazygit`, 0.63.1 here) and `gh auth login`
+for Octo.
+
+> Note: this replaces LazyVim's stock `<leader>gg` (snacks-lazygit) with `kdheepak/lazygit.nvim`.
+> The old LazyVim-only keys `<leader>gG`, `<leader>gL`, `<leader>gB` (open-on-host) and
+> `<leader>gY` (copy URL) are **no longer bound**; `<leader>gB` is reassigned to "blame full
+> file". If you want to open the current line on the git host, run `:Octo browser` on an
+> `Octo` buffer or `gh browse` from a terminal.
+
+### Keymaps
 
 | Key | Action |
 |-----|--------|
-| `<leader>gg` | **Open lazygit** at the git repo root |
-| `<leader>gG` | Open lazygit in the current working directory |
-| `<leader>gf` | History for the **current file** (a snacks picker, not lazygit) |
-| `<leader>gl` | Git log (repo root) · `<leader>gL` = log for cwd |
-| `<leader>gb` | Git blame for the current line |
-| `<leader>gB` | Open the current line/file on the git host in a browser (normal **and** visual) |
-| `<leader>gY` | Same, but copy the URL instead of opening it |
+| `<leader>gg` | **LazyGit** at the repo root (floating window) |
+| `<leader>gf` | LazyGit filtered to the current file's history |
+| `<leader>gl` | LazyGit filtered commit log for the repo |
+| `<leader>gb` | Blame the current line (popup, full commit) |
+| `<leader>gB` | Blame the **whole file** (gitsigns blame view) |
+| `<leader>ub` | Toggle inline blame (300 ms delay, virtual text at EOL) |
+| `<leader>ghs` / `<leader>ghr` | Stage / reset the hunk (works in visual mode too) |
+| `<leader>ghu` | Undo the last `stage_hunk` |
+| `<leader>ghp` | Preview the hunk inline |
+| `]h` / `[h` | Next / previous hunk |
+| `ih` | Hunk text object — `dih` deletes the hunk under the cursor |
+| `<leader>gd` | Diffview of the working tree |
+| `<leader>gm` | Diffview of the current branch vs `origin/master` |
+| `<leader>gH` | Full file history (diffview) |
+| `<leader>gq` | Close diffview |
+| `<leader>gx` | Open 3-pane merge view, but only if there are unmerged files |
+| `<leader>gX` | List conflicted files in the quickfix (jump to the first `<<<<<<<`) |
+| `<leader>pl` / `<leader>pp` | List PRs in the repo / PR for the current branch |
+| `<leader>pr` / `<leader>pR` | Start / submit a PR review |
+| `<leader>pi` / `<leader>ps` | List issues / search PRs and issues |
 
-The whole `<leader>g` group is git; `<leader>gh…` are the per-hunk staging actions
-(gitsigns, buffer-local): `<leader>ghs` stage hunk and `<leader>ghr` reset hunk (both work in
-visual mode too), `<leader>ghp` preview the hunk **inline**, `<leader>ghb` blame line.
+### Reviewing a branch or PR with diffview
+
+`:DiffviewOpen origin/master...HEAD` (bound to `<leader>gm`) shows every file changed on the
+current branch in a sidebar with a diff pane on the right — the quickest way to self-review
+before pushing. `<leader>gd` does the same for the working tree, `<leader>gH` is the file
+history for the current buffer, and `<leader>gq` closes the diffview tab.
+
+### Resolving merge conflicts
+
+Two overlapping tools cover this:
+- **git-conflict.nvim** marks conflict regions in the buffer and, on `GitConflictDetected`,
+  installs buffer-local keymaps: `<leader>co` take ours, `<leader>ct` take theirs,
+  `<leader>cb` take both, `<leader>cn` take neither, `]x` / `[x` to move between conflicts.
+  Diagnostics are suppressed while the buffer is conflicted (markers aren't valid syntax
+  anyway) and restored on `GitConflictResolved`. The `<leader>c` which-key group is relabelled
+  from "code" to "conflict" for the duration.
+- **`<leader>gx`** opens diffview's 3-pane merge view (local / base / incoming) when there is
+  something to merge; **`<leader>gX`** lists every conflicted file in the quickfix so `]q` /
+  `[q` walk them.
+
+### GitHub PRs with Octo
+
+With `gh` authenticated, `<leader>pl` lists the repo's PRs in the snacks picker,
+`<leader>pp` jumps to the PR for the current branch, and `<leader>pr` / `<leader>pR`
+start / submit a review (comments go on the lines you've visually selected). `<leader>pi`
+and `<leader>ps` cover issues and search. The picker is wired to **snacks** rather than
+telescope, since telescope isn't installed in this config.
 
 ### Inside the lazygit window
 
@@ -398,7 +453,7 @@ lazygit has its own keybindings (press `?` any time for context help). The essen
 | `q` | Quit lazygit and return to Neovim |
 
 > lazygit is a standalone tool — these keys are its own, not Neovim's. Anything you can do
-> here you could also do from a plain `lazygit` in a terminal; LazyVim just launches it
+> here you could also do from a plain `lazygit` in a terminal; the plugin just launches it
 > pointed at the right repo.
 
 ---
