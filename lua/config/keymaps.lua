@@ -14,3 +14,14 @@ map("n", "<C-f>", "<cmd>Neotree reveal<cr>", { desc = "Reveal file in explorer" 
 
 -- was CtrlP (`<C-p>`)  ->  LazyVim's find-files picker (remap keeps it backend-agnostic)
 map("n", "<C-p>", "<leader>ff", { remap = true, desc = "Find Files" })
+
+-- Cheatsheet ----------------------------------------------------------------
+map("n", "<leader>?", function() require("config.cheatsheet").open() end,
+  { desc = "Cheatsheet" })
+
+-- Terminal mode: step straight out into an adjacent split without having to
+-- exit terminal mode first. LazyVim doesn't wire these.
+map("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "Window left" })
+map("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Window down" })
+map("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "Window up" })
+map("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Window right" })
