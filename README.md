@@ -184,8 +184,8 @@ vim-airline → **lualine**, ctrlp → **snacks picker**, nerdtree → **neo-tre
 Only the keybinds above were added to point at them.
 
 ### Net language support
-Python, Lua, Web (JS/TS/HTML/CSS), Go, C/C++ and **Java** are wired up and have their servers
-installed. **Rust** and **Kotlin** are configured but their servers are missing — see
+Python, Lua, Web (JS/TS/HTML/CSS), Go, C/C++, **Java** and **Rust** are wired up and have their
+servers installed. **Kotlin** needs a one-time `:MasonInstall kotlin-lsp` on a fresh clone — see
 [Outstanding toolchain gaps](#outstanding-toolchain-gaps). Step-debugging (DAP) is available for
 the languages whose extras provide an adapter; there is currently **no test runner** installed.
 
@@ -201,14 +201,18 @@ the languages whose extras provide an adapter; there is currently **no test runn
 │   │   ├── lazy.lua             # lazy.nvim bootstrap + language Extras + spec sources
 │   │   ├── options.lua          # my ported vim options + a couple of globals
 │   │   ├── keymaps.lua          # my custom keymaps (on top of LazyVim defaults)
+│   │   ├── cheatsheet.lua       # the <leader>? keymap reference popup
 │   │   └── autocmds.lua         # custom autocommands (empty for now)
 │   └── plugins/                 # ← one file per plugin/override. Add files here.
 │       ├── java.lua             # nvim-java (replaces LazyVim's lang.java extra)
-│       ├── kotlin.lua           # kotlin.nvim, driving JetBrains' kotlin-lsp
+│       ├── kotlin.lua           # kotlin.nvim + Mason URL patch for JetBrains' kotlin-lsp
+│       ├── rust.lua             # ensures rust-analyzer is installed via Mason
 │       ├── web.lua              # html + css language servers
 │       ├── markdown.lua         # render-markdown.nvim (in-buffer markdown rendering)
 │       ├── claude-code.lua      # claude-code.nvim (Claude Code terminal, <C-,>)
 │       ├── explorer.lua         # neo-tree + picker overrides (show git-ignored files)
+│       ├── colorscheme.lua      # gruvbox
+│       ├── git.lua              # diffview + extra gitsigns/octo keymaps
 │       ├── tmuxline.lua         # the tmuxline plugin
 │       └── example.lua          # LazyVim's example file — DISABLED, reference only
 ├── lazy-lock.json               # pinned plugin versions (auto-generated, 51 plugins)
@@ -470,10 +474,10 @@ Enabled via LazyVim **Extras** in `lua/config/lazy.lua` (plus the manual files
 | JS / TS | vtsls | `lazy.lua` (typescript) | ✅ (no eslint/prettier — see below) |
 | HTML / CSS | html, cssls | `web.lua` | ✅ |
 | Go | gopls, gofumpt, goimports, golangci-lint | `lazy.lua` | ✅ |
-| Rust | rust-analyzer (driven by rustaceanvim, not Mason) | `lazy.lua` | ⚠️ **missing** — see [gaps](#outstanding-toolchain-gaps) |
+| Rust | rust-analyzer (driven by rustaceanvim) | `lazy.lua` + `rust.lua` (adds rust-analyzer to Mason ensure_installed) | ✅ |
 | C / C++ | clangd | `lazy.lua` (clangd) | ✅ |
 | Java | jdtls (+ spring-boot) | `java.lua` (**nvim-java** — not the LazyVim extra) | ⚠️ jdtls only; spring-boot / debug / test tooling **missing** |
-| Kotlin | kotlin-lsp (JetBrains) | `kotlin.lua` (**kotlin.nvim** — not an lspconfig server) | ⚠️ **missing** — see [gaps](#outstanding-toolchain-gaps) |
+| Kotlin | kotlin-lsp (JetBrains) | `kotlin.lua` (**kotlin.nvim** — not an lspconfig server) | ⚠️ one-time `:MasonInstall kotlin-lsp` — see [gaps](#outstanding-toolchain-gaps) |
 
 **eslint / prettier are not set up.** The `lang.typescript` extra provides vtsls only; eslint
 and prettier live in separate `linting.eslint` and `formatting.prettier` extras, neither of
@@ -504,6 +508,10 @@ drives JetBrains' newer IntelliJ-based `kotlin-lsp`. Two consequences:
    conflicting client spawns. Hence `automatic_enable = { exclude = { "kotlin_lsp" } }`.
 
 First run needs `:MasonInstall kotlin-lsp` — see [gaps](#outstanding-toolchain-gaps).
+`kotlin.lua` also includes a mason.nvim hook that rewrites the kotlin-lsp download URL from
+`download-cdn.jetbrains.com` (which 404s on v263.4702.0+) to `download.jetbrains.com`;
+remove the hook once mason-org/mason-registry ships a fixed entry upstream.
+
 For a worked example of a plain **manual LSP override**, read `lua/plugins/web.lua` instead.
 
 ---
@@ -619,27 +627,27 @@ you version-control this config so installs are reproducible; run `:Lazy update`
 
 ## Outstanding toolchain gaps
 
-Four things are configured but not yet working:
+Three things are configured but not yet fully wired:
 
-- **Kotlin — no server installed.** `kotlin.lua` expects `kotlin-lsp`, but Mason only has the
-  older `kotlin-language-server`, a leftover from the previous hand-rolled setup. Fix:
+- **Kotlin — needs a one-time install.** `kotlin.lua` drives JetBrains' `kotlin-lsp`, and the
+  older `kotlin-language-server` package from the previous hand-rolled setup is still sitting
+  in Mason. Fix on a fresh clone:
   ```
   :MasonInstall kotlin-lsp
   :MasonUninstall kotlin-language-server   # stale, no longer referenced
   ```
+  The Mason registry entry for v263.4702.0+ points at `download-cdn.jetbrains.com`, which 404s;
+  `kotlin.lua` rewrites it to `download.jetbrains.com` at install time via a
+  `package:install:handle` hook. Drop that hook once the upstream registry is fixed.
 - **Java — no debugger, tests, or Spring Boot.** Mason has `jdtls` but not
   `java-debug-adapter`, `java-test`, or the spring-boot language server, so `<leader>d*` and
   the `:JavaTest*` commands will fail on Java files and only the `jdtls` client attaches.
   Install those three via `:Mason`.
-- **Rust — the analyzer isn't installed.** `cargo` and `rustup` are present, and
-  `~/.cargo/bin/rust-analyzer` exists, but it's only a rustup **proxy symlink** — running it
-  errors with `Unknown binary 'rust-analyzer'`. Fix:
-  ```
-  rustup component add rust-analyzer
-  ```
 - **No test runner.** neotest isn't installed; see [Run tests](#run-tests) for the one-line fix.
 
-Verified working: Python, Lua, Web (HTML/CSS/TS), **Go**, C/C++, and Java's `jdtls`. Go 1.26.5
+Verified working: Python, Lua, Web (HTML/CSS/TS), **Go**, **Rust**, C/C++, and Java's `jdtls`.
+Rust-analyzer is auto-installed via Mason by `lua/plugins/rust.lua` (LazyVim's `lang.rust` extra
+only ensures `codelldb`, not the analyzer itself). Go 1.26.5
 was installed via Homebrew, after which Mason built `gopls`/`gofumpt`/`goimports`.
 **ripgrep** (15.2.0, used by the pickers) is installed via Homebrew; **`fd` is not** — install
 it with `brew install fd` if the pickers or venv detection want it.
