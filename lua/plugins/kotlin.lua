@@ -33,6 +33,31 @@ return {
     },
   },
 
+  -- Patch the kotlin-lsp Mason registry entry: upstream v263.4702.0+ URLs point
+  -- at download-cdn.jetbrains.com, which 404s. The file lives at download.jetbrains.com.
+  -- Hook `package:install:handle` so the spec is rewritten just before install
+  -- runs — this fires every install regardless of registry cache state, and
+  -- survives buffer reloads that would otherwise discard an eager mutation.
+  -- Remove once mason-org/mason-registry ships a fixed entry.
+  {
+    "mason-org/mason.nvim",
+    opts = function(_, opts)
+      local reg = require("mason-registry")
+      reg:on("package:install:handle", function(handle)
+        local pkg = handle and handle.package
+        if not pkg or pkg.name ~= "kotlin-lsp" or not pkg.spec or not pkg.spec.source then
+          return
+        end
+        for _, dl in ipairs(pkg.spec.source.download or {}) do
+          for name, url in pairs(dl.files or {}) do
+            dl.files[name] = url:gsub("download%-cdn%.jetbrains%.com", "download.jetbrains.com")
+          end
+        end
+      end)
+      return opts
+    end,
+  },
+
   -- Treesitter parser for Kotlin (LazyVim's dropped kotlin extra used to add it).
   {
     "nvim-treesitter/nvim-treesitter",
