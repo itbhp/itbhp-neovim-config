@@ -211,7 +211,7 @@ the languages whose extras provide an adapter; there is currently **no test runn
 │       ├── markdown.lua         # render-markdown.nvim (in-buffer markdown rendering)
 │       ├── claude-code.lua      # claude-code.nvim (Claude Code terminal, <C-,>)
 │       ├── explorer.lua         # neo-tree + picker overrides (show git-ignored files)
-│       ├── colorscheme.lua      # gruvbox
+│       ├── colorscheme.lua      # onedark.nvim
 │       ├── git.lua              # diffview + extra gitsigns/octo keymaps
 │       ├── tmuxline.lua         # the tmuxline plugin
 │       └── example.lua          # LazyVim's example file — DISABLED, reference only
