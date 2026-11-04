@@ -150,6 +150,22 @@ return {
     keys = {
       { "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "Diffview (working tree)" },
       { "<leader>gm", "<cmd>DiffviewOpen origin/master...HEAD<cr>", desc = "Diff vs master" },
+      {
+        "<leader>gF",
+        function()
+          local file = vim.fn.expand("%")
+          if file == "" then
+            vim.notify("No file in this buffer")
+            return
+          end
+          vim.ui.input({ prompt = "Compare this file with branch: ", default = "main" }, function(branch)
+            if branch and branch ~= "" then
+              vim.cmd("DiffviewOpen " .. branch .. " -- " .. vim.fn.fnameescape(file))
+            end
+          end)
+        end,
+        desc = "Diff this file vs a branch",
+      },
       { "<leader>gH", "<cmd>DiffviewFileHistory %<cr>", desc = "File history (diffview)" },
       { "<leader>gq", "<cmd>DiffviewClose<cr>", desc = "Close diffview" },
       {

@@ -78,6 +78,7 @@ M.sections = {
       { "<leader>gB",  "Blame the whole file" },
       { "<leader>gd",  "Diffview: working tree changes" },
       { "<leader>gm",  "Diffview: branch vs origin/master" },
+      { "<leader>gF",  "Diffview: this file vs a branch (asks)" },
       { "<leader>gH",  "Diffview: this file's history" },
       { "<leader>gq",  "Close diffview" },
       { "]h / [h",     "Next / previous changed hunk" },

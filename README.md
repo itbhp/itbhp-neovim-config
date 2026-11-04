@@ -401,6 +401,7 @@ for Octo.
 | `ih` | Hunk text object — `dih` deletes the hunk under the cursor |
 | `<leader>gd` | Diffview of the working tree |
 | `<leader>gm` | Diffview of the current branch vs `origin/master` |
+| `<leader>gF` | Diffview of **this file** vs a branch (asks for the branch, default `main`) |
 | `<leader>gH` | Full file history (diffview) |
 | `<leader>gq` | Close diffview |
 | `<leader>gx` | Open 3-pane merge view, but only if there are unmerged files |
@@ -415,6 +416,19 @@ for Octo.
 current branch in a sidebar with a diff pane on the right — the quickest way to self-review
 before pushing. `<leader>gd` does the same for the working tree, `<leader>gH` is the file
 history for the current buffer, and `<leader>gq` closes the diffview tab.
+
+### Comparing a file with a branch
+
+- **`<leader>gF`** asks for a branch (default `main`) and opens diffview for the current
+  file only: the branch's version on the left, yours on the right. `Esc` at the prompt cancels.
+- The same by hand: `:DiffviewOpen main -- %`. `main` can be any branch, tag or commit
+  (e.g. `origin/develop`); `--` means "only these files"; `%` is Vim for "the current file".
+- Inside the diff: `]c` / `[c` jump to the next / previous change; `<leader>gq` closes.
+- Quick alternative: `:Gitsigns diffthis main` opens a plain split with `main`'s version next
+  to your buffer (you can keep editing your side; `:q` closes the extra window).
+
+> `<leader>gm` is hard-coded to `origin/master`. In repos whose default branch is `main`
+> (like this one) use `:DiffviewOpen origin/main...HEAD` instead.
 
 ### Resolving merge conflicts
 
@@ -459,6 +473,28 @@ lazygit has its own keybindings (press `?` any time for context help). The essen
 > lazygit is a standalone tool — these keys are its own, not Neovim's. Anything you can do
 > here you could also do from a plain `lazygit` in a terminal; the plugin just launches it
 > pointed at the right repo.
+
+### Switching branch with lazygit
+
+1. In Normal mode press **`<leader>gg`** (`Space g g`) — lazygit opens in a floating window.
+2. Press **`3`** to jump to the **Branches** panel (or `Tab` / `]` to cycle panels).
+3. Move to the branch with **`j`** / **`k`** (or the arrow keys).
+4. Press **`<Space>`** to check it out (inside lazygit `Space` means "checkout", not leader).
+5. Press **`q`** to close lazygit; Neovim reloads open files from the new branch.
+
+Handy extras in the Branches panel:
+
+| Key | Action |
+|-----|--------|
+| `/` | Filter branches by name |
+| `n` | Create a new branch from the current one and switch to it |
+| `c` | Check out by name — any branch, including a remote one like `origin/feature-x` |
+| `f` | Fetch, so remote branches are up to date |
+| `[` / `]` | Switch to the **Remotes** tab; `<Space>` on a remote branch creates a local tracking branch |
+| `?` | All keybindings for the current panel |
+
+If you have uncommitted changes, lazygit offers to stash them (or refuses if they would
+conflict). To stash yourself first: `2` (Files panel), then `s`.
 
 ---
 
